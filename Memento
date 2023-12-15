@@ -1,0 +1,139 @@
+Призначення
+Не порушуючи інкапсуляції, фіксує та виносить за межі об'єкта його внутрішній стан так, щоб пізніше можна було відновити з нього об'єкт.
+
+Застосовність
+Слід використовувати шаблон Знімок у випадках, коли:
+
+необхідно зберегти миттєвий знімок стану об'єкта (або його частини), щоб згодом об'єкт можна було відтворити у тому ж самому стані;
+безпосереднє вилучення цього стану розкриває деталі реалізації та порушує інкапсуляцію об'єкта.
+
+Переваги
+Забезпечує спосіб запису внутрішнього стану об'єкта в окремому об'єкті, не порушуючи закону дизайну.
+Усуває потребу в багаторазовому створенні того ж об'єкта з єдиною метою збереження його стану.
+Спрощує Originator, даючи відповідальність за зберігання Memento серед Caretaker.
+Недоліки
+Збереження та відновлення стану може зайняти багато часу.
+Об'єкт Memento повинен забезпечувати два типи інтерфейсів: вузький інтерфейс для Caretaker і широкий інтерфейс для Originator.
+Дозволяє іншому об'єкту довільно змінити стан об'єкта
+
+#include <iostream>
+#include <array>
+#include <Windows.h>
+
+using namespace std;
+
+// Стан містить здоров’я та кількість убитих монстрів
+struct State
+{
+	float health;
+	int amount_of_killed;
+	State() :health(100), amount_of_killed(0) {};
+	friend ostream& operator<<(ostream & os, const State & s)
+	{
+		return os << "Health: " << s.health << " , killed " << s.amount_of_killed << '\n';
+	}
+};
+// Memento — контекст
+// зберігає внутрішній стан об'єкта Originator
+class GameMemento
+{
+private:
+	State state;
+public:
+	GameMemento() {}
+	GameMemento(State s) :state(s) {}
+	State get_state()
+	{
+		return state;
+	}
+};
+// Originator — хазяїн
+// створює знімок, що утримує поточний внутрішній стан;
+// використовує знімок для відтворення внутрішнього стану;
+class GameOriginator
+{
+private:
+	// Стан містить здоров’я та кількість убитих монстрів
+	State state;
+public:
+	void play()
+	{
+		// Імітуємо процес гри —
+		// здоров’я повільно погіршується, а монстрів стає все менше
+		state.health *= 0.9;
+		state.amount_of_killed += 2;
+		cout << state;
+	}
+	GameMemento game_save()
+	{
+		return GameMemento(state);
+	}
+	void load_game(GameMemento memento)
+	{
+		state = memento.get_state();
+	}
+};
+//CareTaker — опікун
+//відповідає за зберігання знімка;
+//не проводить жодних операцій над знімком та не має уявлення про його внутрішній зміст.
+class Caretaker
+{
+private:
+	GameOriginator game;
+	array< GameMemento, 5 > quick_saves;
+	int k;
+	bool save_load;
+	void check_save()
+	{
+		k < 5 ? k++ : k = 0;
+	}
+	// метод аби побачити коли була здійснена загрузка
+	void check_load()
+	{
+		if (save_load == true)
+		{
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_GREEN);
+			save_load = false;
+		}
+		else
+		{
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+		}
+	}
+public:
+	Caretaker() : k(-1) {}
+	void shoot()
+	{
+		check_load();
+		game.play();
+	}
+	void F5()
+	{
+		check_save();
+		quick_saves[k] = game.game_save();
+	}
+	void F9(int i = -1)
+	{
+		if (i < 0 || i > 5) i = k;
+		game.load_game(quick_saves.at(i));
+		save_load = true;
+	}
+};
+void main()
+{
+	Caretaker player;
+	player.F5();
+	player.shoot();
+	player.F5();
+	player.shoot();
+	player.shoot();
+	player.shoot();
+	player.shoot();
+	player.F9();
+	player.shoot();
+	player.shoot();
+	player.F5();
+	player.F9(2);
+	player.shoot();
+	player.shoot();
+}
